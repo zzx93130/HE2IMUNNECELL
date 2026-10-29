@@ -89,19 +89,31 @@ def patch_grid(sample, target_mpp):
     deployment/baselines/hovernet_cells.py so both pipelines see identical pixels.
     """
     mpp = native_mpp(sample)
-    scale = mpp / target_mpp  # target px per native px
     image = tifffile.imread(DATA / "tif_slides" / f"{sample}.tif")[..., :3]
     table = spots(sample)
     spacing = 100 / mpp  # native px between neighbouring spot centres
     tissue = np.zeros(image.shape[:2], np.uint8)
     for s in table[table.in_tissue == 1].itertuples():
         cv2.circle(tissue, (int(round(s.x)), int(round(s.y))), int(round(.62 * spacing)), 1, -1)
+    yield from patch_grid_image(image, mpp, tissue, target_mpp)
+
+
+def patch_grid_image(image, mpp, tissue, target_mpp, tissue_scale=1.0, min_tissue=.05):
+    """Image-agnostic part of patch_grid: (x, y, RGB patch, tissue ratio) over any RGB image.
+
+    image: native RGB array at mpp µm/px; tissue: 0/1 mask covering the image at tissue_scale mask px per
+    native px (1.0 = same grid as the image). Patches whose 768-px core has < min_tissue tissue are skipped.
+    Shared by visium_cells, hovernet_cells and deployment/tnbc_st/tnbc_cells.py.
+    """
+    scale = mpp / target_mpp  # target px per native px
+
+    def t(v):  # target px -> tissue-mask index (identical arithmetic to the original when tissue_scale == 1)
+        return int(v / scale) if tissue_scale == 1 else int(v / scale * tissue_scale)
     height, width = (int(d * scale) for d in image.shape[:2])
     for y in range(-MARGIN, height - MARGIN, STRIDE):
         for x in range(-MARGIN, width - MARGIN, STRIDE):
-            core = tissue[int((y + MARGIN) / scale):int((y + MARGIN + STRIDE) / scale),
-                          int((x + MARGIN) / scale):int((x + MARGIN + STRIDE) / scale)]
-            if core.size == 0 or core.mean() < .05:
+            core = tissue[t(y + MARGIN):t(y + MARGIN + STRIDE), t(x + MARGIN):t(x + MARGIN + STRIDE)]
+            if core.size == 0 or core.mean() < min_tissue:
                 continue
             # Native region covering the patch (1 px pad for interpolation), then bicubic upsampling.
             x0, y0 = x / scale - 1, y / scale - 1

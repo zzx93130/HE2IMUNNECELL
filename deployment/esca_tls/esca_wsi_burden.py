@@ -479,8 +479,10 @@ def process(barcode, log):
     (work / "patches").mkdir(parents=True)
     rows = []
     slide = slide_path(barcode)
+    # A run that failed after classification left its cell table; the screen is deterministic, so reuse it.
+    resumed = (out / "cells.csv.gz").exists()
     with open_slide(slide) as handle:
-        for cy, cx in zip(*np.nonzero(cores)):
+        for cy, cx in ([] if resumed else zip(*np.nonzero(cores))):
             x, y = int(cx * STRIDE - CORE_MARGIN), int(cy * STRIDE - CORE_MARGIN)
             patch_id = len(rows)
             path = work / "patches" / f"wsi_patch{patch_id}_x{x}_y{y}.png"
@@ -505,10 +507,13 @@ def process(barcode, log):
         finally:
             release_gpu_lock()
         cells = pd.read_csv(result_csv)[KEEP]
+    elif resumed:
+        cells = pd.read_csv(out / "cells.csv.gz")
+        seg = cls = None
     else:
         cells = pd.DataFrame(columns=KEEP)
     tls, hooknet_tls, hooknet_unproposed = detect_regions(barcode, cores, cells, maps["mpp"])
-    accepted = tls[tls.accepted]
+    accepted = tls[tls.accepted.astype(bool).to_numpy()]  # an empty object-dtype mask would select columns
     cells.to_csv(out / "cells.csv.gz", index=False)
     tls.to_csv(out / "tls.csv", index=False)
     core_mm2 = (STRIDE * maps["mpp"]) ** 2 / 1e6
@@ -528,7 +533,8 @@ def process(barcode, log):
                "wall_seconds": time.perf_counter() - started, "screen_params": params, "two_stage_params": PARAMS,
                "patch_size": PATCH, "stride": STRIDE, "core_margin": CORE_MARGIN, "classifier": str(CLASSIFIER),
                "classifier_sha256": hashlib.sha256(CLASSIFIER.read_bytes()).hexdigest(),
-               "segmentation_model": "cpsam_v2", "tta": "d4", "stain_normalisation": "none"},
+               "segmentation_model": "cpsam_v2", "tta": "d4", "stain_normalisation": "none",
+               "resumed_from_saved_cells": resumed},
               out / "summary.json")
     shutil.rmtree(work, ignore_errors=True)
     return (f"{int(cores.sum())} cores ({cores.sum() * core_mm2:.1f} of {tissue_mm2:.0f} mm2), {len(cells)} cells, "

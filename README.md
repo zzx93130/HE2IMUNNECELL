@@ -352,14 +352,18 @@ Cohort: 150 patients (152 analysed slides), 63 deaths, 86 ESCC / 64 EAC, stage I
 
 | Burden | HR per SD (95% CI) | p |
 |---|---|---|
-| HookNet TLS per cm² | 1.19 (0.91–1.56) | 0.21 |
-| HookNet TLS area fraction | 1.27 (0.98–1.64) | 0.075 |
-| HE2CELL predicted-B density, random windows | 1.13 (0.87–1.47) | 0.37 |
-| 12-chemokine score (RNA) | 1.13 (0.87–1.46) | 0.35 |
+| Burden | HR per SD (95% CI) | p | Holm p | Top vs bottom tertile |
+|---|---|---|---|---|
+| HookNet TLS per cm² | 1.19 (0.91–1.56) | 0.21 | 0.62 | 1.39 (0.74–2.61) |
+| HookNet TLS area fraction | 1.27 (0.98–1.64) | 0.075 | 0.30 | 1.30 (0.68–2.49) |
+| HE2CELL whole-slide TLS per cm² | 1.34 (1.02–1.75) | 0.035 | 0.21 | 2.04 (1.03–4.07) |
+| HE2CELL whole-slide B-TLS area fraction | 1.26 (0.99–1.61) | 0.058 | 0.29 | 2.44 (1.23–4.86) |
+| HE2CELL predicted-B density, random windows | 1.13 (0.87–1.47) | 0.37 | 0.70 | 1.64 (0.86–3.12) |
+| 12-chemokine score (RNA) | 1.13 (0.87–1.46) | 0.35 | 0.70 | 1.16 (0.59–2.27) |
 
-No burden definition is associated with OS. The point estimates lie on the "harmful" side, but every interval includes 1; tertile, complete-case and unstratified models agree. Schoenfeld tests show no PH violation. Adding burden does not raise the C-index above the clinical model (0.69). One of eight within-histology tests is nominal (ESCC, HookNet area fraction, HR 1.49, 1.04–2.14) and is not corrected for multiplicity.
+There is no evidence of a protective TLS effect. Every estimate lies on the harmful side (more burden, higher hazard). Only HE2CELL whole-slide burden reaches nominal significance: per SD 1.34 (1.02–1.75), and top vs bottom tertile 2.04 and 2.44. None survives Holm correction across the six definitions (smallest 0.21). HookNet, random-window B density and the RNA score are null. Schoenfeld tests show no PH violation. Adding any burden leaves the C-index at the clinical model's 0.69. Two of twelve within-histology tests are nominal (ESCC: HookNet area fraction 1.49, 1.04–2.14; HE2CELL whole-slide area fraction 1.45, 1.04–2.01), uncorrected. Caveat for the HE2CELL rows: on whole slides HE2CELL accepts 1,667 aggregates against HookNet's 897 TLS. Only 38% overlap a HookNet TLS (per-patient ρ 0.62 with HookNet TLS/cm²), so this burden measures dense B-containing lymphoid aggregates more broadly than HookNet-defined TLS.
 
-HE2CELL whole-slide burden. The window pipeline never covered whole slides. A 4 µm haematoxylin screen was tried and rejected on dev windows: absolute OD would have processed almost all tissue, and per-slide local contrast covered only 89% of dev TLS. The adopted screen is a model-free surrogate of the frozen stage 1: nuclear blobs (LoG on the 1 µm level) counted on the 8 µm artefact-free QC grid. Regions with ≥ 9000 blobs/mm² over ≥ 5000 µm², grown by 100 µm, are segmented with the `esca_windows` patch/stride/core convention. They are classified with `he2cell_esca_finetuned.pth` (+ prior), and the frozen two-stage rule is applied per region. The setting was chosen on dev only, as the cheapest with ≥ 95% end-to-end recovery; 98% would have doubled the cost. On held-out test windows the screen recovers 162 of 166 accepted TLS (97.6%, 95% CI 95.2–99.4%). The expected cost is a median 274 cores per slide (90th percentile 1374). The run started 2026-10-25 12:49 and waits for item 3's GPU queue to finish (`outputs/_gpu.lock`); the full cohort is roughly 2–3 days of GPU time. Slides are processed in a seeded random patient order (seed 20261025), so any completed prefix is an unbiased subset. Every 10 completed slides, and at the end, the run rewrites the survival report and `summary.json`. HE2CELL whole-slide results are labelled INTERIM, with patient and death counts, next to HookNet on the same patients; they are modelled from 20 patients and 10 deaths. A patient counts only when all their slides are complete. Per-slide results go to `slides/<barcode>/wsi_burden/{cells.csv.gz, tls.csv, summary.json}`, progress to `outputs/esca_tls_20261019/wsi_burden.log`. Calibration tables, including the rejected screens, are in `outputs/esca_tls_20261019/wsi_screen_calibration/`.
+HE2CELL whole-slide burden. The window pipeline never covered whole slides. A 4 µm haematoxylin screen was tried and rejected on dev windows: absolute OD would have processed almost all tissue, and per-slide local contrast covered only 89% of dev TLS. The adopted screen is a model-free surrogate of the frozen stage 1: nuclear blobs (LoG on the 1 µm level) counted on the 8 µm artefact-free QC grid. Regions with ≥ 9000 blobs/mm² over ≥ 5000 µm², grown by 100 µm, are segmented with the `esca_windows` patch/stride/core convention. They are classified with `he2cell_esca_finetuned.pth` (+ prior), and the frozen two-stage rule is applied per region. The setting was chosen on dev only, as the cheapest with ≥ 95% end-to-end recovery; 98% would have doubled the cost. On held-out test windows the screen recovers 162 of 166 accepted TLS (97.6%, 95% CI 95.2–99.4%). The run finished 2026-10-29 with all 152 slides (150 patients). It used a median 274 cores (9.8 mm², 8% of tissue) and 13 GPU minutes per slide, 71 GPU hours in total. Four slides had no screen-positive region and burden 0. Nine slides with no stage-1 aggregate first failed on an empty-table indexing bug after their cells were saved; they were completed from the saved cell tables, with no re-segmentation. Slides ran in a seeded random patient order (seed 20261025). During the run the survival report was rewritten as INTERIM every 10 slides; the current report is FINAL. Per-slide results go to `slides/<barcode>/wsi_burden/{cells.csv.gz, tls.csv, summary.json}`, progress to `outputs/esca_tls_20261019/wsi_burden.log`. Calibration tables, including the rejected screens, are in `outputs/esca_tls_20261019/wsi_screen_calibration/`.
 
 Outputs: `outputs/esca_survival_20261025/{Survival_report.html, summary.json, patient_burden.csv, cox_tables.csv, figures/}`.
 
@@ -533,3 +537,46 @@ deployment/cell_validation/run_classifier_cv.sh      # trains 4 folds under the 
 ```
 
 Outputs: `outputs/classifier_cv_20261026/{CV_report.html, summary.json, per_patient_metrics.csv, folds.json, verification.json, crops.csv.gz, figures/, fold{0..3}/{best_finetuned.pth, best_finetuned.prior.json, settings.json, history.json, train.log}, predictions/cv_<clean|sev1|sev2|sev3>/CRC##.csv.gz}`. `deployment/finetune/finetune_classifier.py` gained `--init imagenet` (default unchanged).
+
+## TNBC_ST (frozen-section ST H&E) vs serial CD3/CD20 IHC (November 2026)
+
+Question: on an external cohort with immunostains, are T/B cells identified correctly (claim 1), is TLS detection better than the existing methods (claim 2), and does TLS composition agree (claim 3)? The data are TNBC_ST (Venet 2024, Zenodo 14204217, `data/TNBC_ST/`). These are **frozen-section** spatial-transcriptomics H&E arrays, outside HE2CELL's FFPE training domain. They come with same-section pathologist region maps, a dual CD3 (DAB) / CD20 (red) IHC on a serial section, and spot RNA.
+
+Code is in `deployment/tnbc_st/`; outputs are in `outputs/tnbc_st_20261101/` (`TNBC_report.html`, `summary.json`, `preregistration.json`). The deployed checkpoint `models/he2cell_esca_finetuned.pth` (sha256 1778b5dd…, tau 0.5 prior, D4) runs on raw H&E, and every detector parameter is frozen at its ESCA value.
+
+**Scale.** imagesHD is 0.2715 µm/px, the median of 68 accepted H&E–IHC registrations to the 0.2283 µm/px NDPIs. The pixels are isotropic.
+- The ST spot lattice is a non-standard 66×63 checkerboard. Read as 100 µm units it gives 0.263 µm/px (3 % lower).
+- `visium_cells.patch_grid` was split into `patch_grid_image()`; KC2 patches stay md5-identical.
+
+**Coverage.** 33 of the 94 annotated arrays were processed: the pre-specified priority block (2 timing arrays, the 20-array HoVer-Net subset and all 25 arrays with a Lymphoid-nodule annotation).
+- Stage 1 was stopped there for GPU cost, after an interim checkpoint. This is recorded as a protocol deviation, and the 61 arrays not run are listed in `preregistration.json`.
+- `deployment/tnbc_st/run_stage1.sh` resumes from `stage1_order.txt`.
+
+Results:
+- **Domain shift (lead result).**
+  - On frozen sections about three quarters of the nuclei in pathologist Lymphoid nodules and Lymphocyte regions are called Other (0.76 / 0.75), versus 0.46 inside HookNet TLS on FFPE ESCA.
+  - The B share in Lymphoid nodules is 0.12, versus 0.19 in ESCA TLS and 0.45 in Visium TLS. Macrophages are almost never called. Nuclear densities are similar to FFPE.
+- **Claim 1 (T/B identity): not supported on frozen sections.** Mean per-sample Spearman vs IHC, 500 µm tiles, 24 registered pairs:
+  - T vs CD3 0.30 [0.19, 0.42]; B vs CD20 0.27 [0.17, 0.36]; nuclei-only vs CD3+CD20 0.29 [0.19, 0.38]; T+B − nuclei +0.03 [−0.09, 0.15].
+  - The B discriminant (ρ(B,CD20) − ρ(B,CD3)) is not met: +0.01 [−0.04, 0.06]. The T discriminant is met but small: +0.07 [+0.01, +0.14].
+  - HoVer-Net inflammatory density tracks CD3+CD20 at least as well: 0.46 on 12 subset pairs vs 0.32 for HE2CELL T+B. The paired T+B − HoVer-Net difference is −0.16 [−0.32, +0.02], not significant.
+  - Spot RNA: B vs MS4A1/CD79A/CD19 gives 0.15 [0.10, 0.20], below nuclei-only (0.19). The IHC ceiling is 0.27.
+- **Claim 2 (TLS detection): partial.** Against 54 same-section Lymphoid-nodule objects in 22 patients:
+  - Two-stage object F1 is 0.43 [0.27, 0.56]. It is higher than nuclei-only at 11000 (+0.28 [+0.15, +0.39]) and at 16000 (+0.20), and than HookNet-TLS (+0.42); Holm p < 0.01 for all three.
+  - B density has higher TLS-vs-inflamed tile AUROC than nuclei-only: 0.73 vs 0.53, +0.20 [+0.10, +0.28], nominal p 0.001.
+  - These precisions are pessimistic: the "inflamed" negatives contain IHC follicles.
+  - Against IHC CD20 aggregates (150 aggregates, 24 pairs) there is no F1 advantage over nuclei-only (0.00 [−0.21, +0.19]) or HoVer-Net. HE2CELL is high-precision (0.72) and low-recall (0.30).
+  - Two-stage − HoVer-Net tile AUROC is −0.14 [−0.23, −0.02] with p 0.15. The CI and the permutation test disagree at n = 20, so no direction is claimed.
+- **Claim 3 (composition): supporting only.** In 46 matched TLS (13 patients), HE2CELL B/(B+T) vs IHC CD20/(CD3+CD20) gives ρ 0.52 [0.17, 0.68]. HE2CELL under-calls the B share (median 0.30 vs 0.46).
+- **HookNet-TLS fails on frozen sections.** It calls a median 35 % (IQR 18–64 %) of tissue TLS (`qc/hooknet_failure_mode.jpg`).
+- **IHC and registration.** Chromogens were assigned from morphology: red fills follicle cores, so red = CD20 and DAB = CD3 (`qc/stage0/chromogen_assignment.png`). Six slides are labelled CD2/CD20 and are excluded from the CD3 terms, with a sensitivity analysis. 68/86 registrations pass the ≤ 100 µm median-residual QC.
+- **Shared resources.** A separate session (`frozen_adapt_*`, `outputs/tnbc_frozen_adapt_20261101/`) shares this folder and the GPU. None of its outputs are used here.
+
+```sh
+.venv/bin/python deployment/tnbc_st/tnbc_fetch.py Clinical.tar misc.tar rawCountsMatrices.tar byArray.tar   # md5-checked streaming extract
+.venv/bin/python deployment/tnbc_st/tnbc_inventory.py && .venv/bin/python deployment/tnbc_st/tnbc_ihc.py     # inventory; IHC blobs (CPU)
+.venv/bin/python deployment/tnbc_st/tnbc_register.py && .venv/bin/python deployment/tnbc_st/tnbc_scale.py --final
+deployment/tnbc_st/run_stage1.sh                      # HE2CELL + HookNet per array under the GPU lock (resumable)
+deployment/tnbc_st/run_hovernet.sh 6                  # HoVer-Net subset, CPU workers
+for s in eval_path eval_ihc eval_rna diagnostic hooknet_qc report; do .venv/bin/python deployment/tnbc_st/tnbc_$s.py; done
+```
