@@ -261,6 +261,7 @@ def report(out, summary, cox, figures):
                             ("complete-case stage, adjusted (stratified)", "burden_sd")]:
             r = get(model, term)
             cells.append(f"{fmt(r.HR)} ({fmt(r.CI95_low)}–{fmt(r.CI95_high)}); p {pfmt(r.p)}" if r is not None else "–")
+        cells.insert(2, pfmt(b.get("holm_p_adjusted_per_SD", float("nan"))))
         main_rows.append(f"<tr><td>{html.escape(b['label'])}</td><td>{b['n']} / {b['events']}</td>"
                          + "".join(f"<td>{c}</td>" for c in cells)
                          + f"<td>{pfmt(b.get('schoenfeld_p_burden'))}</td><td>{fmt(b.get('C_index_clinical_only'), 3)} → {fmt(b.get('C_index_adjusted'), 3)}</td></tr>")
@@ -318,11 +319,12 @@ img.fig{{max-width:100%;background:#fff;border-radius:8px;border:1px solid var(-
 <p class="muted">Per patient: mean over that patient's analysed slides. Whole-slide HE2CELL burden: a nuclear-blob screen proposes candidate regions (artefact-free tissue only; see next section), every 768-px core within 100 µm of a candidate is segmented and classified with the adopted fine-tuned classifier (tau 0.5 prior), and the frozen two-stage rule (all-nuclei density ≥ {summary['two_stage_params']['threshold']}/mm² at σ {summary['two_stage_params']['sigma_um']} µm, area ≥ {summary['two_stage_params']['min_area_um2']:.0f} µm², B share ≥ {summary['two_stage_params']['b_share']}) accepts TLS. A patient's whole-slide burden is used only when all of that patient's slides are complete.</p>
 
 <h2>Screen validation (held-out test windows)</h2>
-{f'''<p>The plan asked for a 4 µm haematoxylin screen. Two versions were calibrated on dev windows and rejected: absolute haematoxylin OD (stain intensity differs between slides; the best setting covered 95% of dev TLS while processing a median 136 mm² per slide, i.e. almost all tissue) and a per-slide quantile of local haematoxylin contrast (89% of dev TLS at a median 56 mm²; the 150 µm background suppresses the interior of large aggregates). The adopted screen is a model-free surrogate of the frozen stage 1: nuclear blobs (LoG maxima of haematoxylin on the 1 µm level) counted on the 8 µm artefact-free QC tissue grid, smoothed at 25 µm; regions with blob density ≥ {s['screen_params']['density_per_mm2']:.0f}/mm² over ≥ {s['screen_params']['min_component_um2']:.0f} µm², grown by {s['screen_params']['margin_um']:.0f} µm, are segmented. Selection rule (dev only, fixed before the test check): cheapest setting with ≥ 95% dev end-to-end recovery; 98% was not reachable at less than twice the cost. End-to-end check: in each window, cells outside the cores the screen would process were removed and the two-stage rule re-run. <b>Test: {s['test']['recovered_end_to_end']} of {s['test']['accepted_aggregates']} accepted TLS recovered ({fmt(100 * s['test']['recovered_fraction'], 1)}%, patient-bootstrap 95% CI {fmt(100 * s['test']['recovered_fraction_CI95'][0], 1)}–{fmt(100 * s['test']['recovered_fraction_CI95'][1], 1)}%)</b>; dev {s['dev']['recovered_end_to_end']} of {s['dev']['accepted_aggregates']}. Expected cost: median {s['screen_params']['median_cores_per_slide']:.0f} cores per slide (90th percentile {s['screen_params']['p90_cores_per_slide']:.0f}). Completed slides: median processed area {fmt(w.get('median_processed_mm2'), 1)} mm², median wall time {fmt(w.get('median_wall_minutes'), 1)} min.</p>''' if s else '<p>Not run.</p>'}
+{f'''<p>The plan asked for a 4 µm haematoxylin screen. Two versions were calibrated on dev windows and rejected: absolute haematoxylin OD (stain intensity differs between slides; the best setting covered 95% of dev TLS while processing a median 136 mm² per slide, i.e. almost all tissue) and a per-slide quantile of local haematoxylin contrast (89% of dev TLS at a median 56 mm²; the 150 µm background suppresses the interior of large aggregates). The adopted screen is a model-free surrogate of the frozen stage 1: nuclear blobs (LoG maxima of haematoxylin on the 1 µm level) counted on the 8 µm artefact-free QC tissue grid, smoothed at 25 µm; regions with blob density ≥ {s['screen_params']['density_per_mm2']:.0f}/mm² over ≥ {s['screen_params']['min_component_um2']:.0f} µm², grown by {s['screen_params']['margin_um']:.0f} µm, are segmented. Selection rule (dev only, fixed before the test check): cheapest setting with ≥ 95% dev end-to-end recovery; 98% was not reachable at less than twice the cost. End-to-end check: in each window, cells outside the cores the screen would process were removed and the two-stage rule re-run. <b>Test: {s['test']['recovered_end_to_end']} of {s['test']['accepted_aggregates']} accepted TLS recovered ({fmt(100 * s['test']['recovered_fraction'], 1)}%, patient-bootstrap 95% CI {fmt(100 * s['test']['recovered_fraction_CI95'][0], 1)}–{fmt(100 * s['test']['recovered_fraction_CI95'][1], 1)}%)</b>; dev {s['dev']['recovered_end_to_end']} of {s['dev']['accepted_aggregates']}. Expected cost: median {s['screen_params']['median_cores_per_slide']:.0f} cores per slide (90th percentile {s['screen_params']['p90_cores_per_slide']:.0f}). Completed slides ({w['slides_complete']} of {w['slides_expected']}): median processed area {fmt(w.get('median_processed_mm2'), 1)} mm² ({fmt(100 * w.get('median_processed_fraction', float('nan')), 1)}% of tissue), median {fmt(w.get('median_gpu_minutes'), 1)} GPU minutes per slide, {fmt(w.get('total_gpu_hours'), 0)} GPU hours in total; {w.get('slides_with_no_processed_core', '–')} slides had no screen-positive region.</p>
+<p>Whole-slide agreement with HookNet: HE2CELL accepted {w.get('total_accepted_TLS', '–')} TLS, against HookNet's {w.get('total_hooknet_TLS_artifact_free', '–')} artefact-free TLS on the same slides. Only {fmt(100 * w.get('accepted_matching_HookNet_fraction', float('nan')), 0)}% of HE2CELL's accepted aggregates overlap a HookNet TLS, and per-patient TLS/cm² correlate at Spearman ρ {fmt(w.get('spearman_vs_HookNet_TLS_per_cm2', {}).get('rho', float('nan')))}. The window validation was enriched for HookNet TLS. On whole slides the frozen two-stage rule (B share ≥ 0.03) also accepts many dense lymphoid regions that HookNet does not call TLS, so HE2CELL whole-slide burden is closer to "dense B-containing lymphoid aggregates" than to HookNet-defined TLS.</p>''' if s else '<p>Not run.</p>'}
 
 <h2>Overall survival: hazard ratios</h2>
 <p><b>{html.escape(summary['he2cell_wsi_status'])}</b></p>
-<table><tr><th>Burden</th><th>n / deaths</th><th>Unadjusted HR per SD</th><th>Adjusted HR per SD</th><th>Adjusted HR, top vs bottom tertile</th><th>Complete-case stage, adjusted HR per SD</th><th>Schoenfeld p (burden)</th><th>C-index clinical → +burden</th></tr>{''.join(main_rows)}</table>
+<table><tr><th>Burden</th><th>n / deaths</th><th>Unadjusted HR per SD</th><th>Adjusted HR per SD</th><th>Holm p</th><th>Adjusted HR, top vs bottom tertile</th><th>Complete-case stage, adjusted HR per SD</th><th>Schoenfeld p (burden)</th><th>C-index clinical → +burden</th></tr>{''.join(main_rows)}</table>
 <p class="muted">HR &lt; 1 means more burden, lower hazard of death. Unadjusted and adjusted models are stratified by histology; adjusted = + stage group (I/II, III/IV, missing), age per 10 years, male sex. Complete-case drops patients without stage. All Cox terms are in <code>cox_tables.csv</code>, including the unstratified model with histology as a covariate.</p>
 <img class="fig" src="{png(figures / 'forest_per_SD.png')}" alt="Forest plot of adjusted hazard ratios per SD">
 
@@ -405,6 +407,11 @@ def main():
         wsi_run.update({"median_processed_mm2": float(np.median([w["processed_mm2"] for w in wsi])),
                         "median_processed_fraction": float(np.median([w["processed_fraction_of_tissue"] for w in wsi])),
                         "median_wall_minutes": float(np.median([w["wall_seconds"] for w in wsi]) / 60),
+                        "median_gpu_minutes": float(np.median([(w["segmentation_seconds"] or 0) + (w["classification_seconds"] or 0) for w in wsi]) / 60),
+                        "total_gpu_hours": float(sum((w["segmentation_seconds"] or 0) + (w["classification_seconds"] or 0) for w in wsi) / 3600),
+                        "slides_resumed_from_saved_cells": int(sum(bool(w.get("resumed_from_saved_cells")) for w in wsi)),
+                        "slides_with_no_processed_core": int(sum(w["processed_cores"] == 0 for w in wsi)),
+                        "total_hooknet_TLS_artifact_free": int(sum(w["hooknet_TLS_artifact_free"] for w in wsi)),
                         "total_accepted_TLS": int(sum(w["accepted_TLS"] for w in wsi)),
                         "accepted_matching_HookNet_fraction": float(sum(w["accepted_matching_HookNet"] for w in wsi) / max(sum(w["accepted_TLS"] for w in wsi), 1))})
         both = frame[frame.he2cell_wsi_TLS_per_cm2.notna()]
@@ -413,6 +420,16 @@ def main():
     adjusted = cox[(cox.model == "adjusted (stratified by histology)") & (cox.term == "burden_sd") & cox.burden.isin(list(BURDENS))]
     final = adjusted[~adjusted.burden.isin(WSI_KEYS)] if interim else adjusted
     significant = final[final.p < .05]
+    # Holm step-down over the (final) burden definitions, adjusted per-SD models.
+    holm, running = {}, 0.0
+    for i, r in enumerate(final.sort_values("p").itertuples()):
+        running = max(running, min(1.0, (len(final) - i) * r.p))
+        holm[r.burden] = running
+    for key, value in holm.items():
+        burdens[key]["holm_p_adjusted_per_SD"] = value
+    excluding = final[final.CI95_low > 1]
+    tertile = cox[(cox.model == "adjusted tertiles (stratified by histology)") & (cox.term == "tertile_T3") & cox.burden.isin(list(final.burden))]
+    tertile_excluding = tertile[(tertile.CI95_low > 1) | (tertile.CI95_high < 1)]
     interpretation = (f"Adjusted for stage, age and sex and stratified by histology, "
                       + ("no burden definition was associated with overall survival at p < 0.05 "
                          if significant.empty else
@@ -424,7 +441,14 @@ def main():
                       f"{fmt(power(eligible.event.sum())['per_SD_HR_detectable'][0])}/{fmt(power(eligible.event.sum())['per_SD_HR_detectable'][1])}, "
                       "so the confidence intervals, not the p-values, are the result to carry forward. "
                       + ("Every adjusted point estimate is above 1 (more burden, higher hazard), the opposite of the protective "
-                         "TLS effect reported in other cancers, but no interval excludes 1. " if (final.HR > 1).all() else "")
+                         "TLS effect reported in other cancers. " if (final.HR > 1).all() else "")
+                      + ("No per-SD interval excludes 1. " if excluding.empty else
+                         f"{len(excluding)} per-SD interval(s) exclude 1 ("
+                         + "; ".join(f"{BURDENS[r.burden][0]} {fmt(r.HR)} ({fmt(r.CI95_low)}–{fmt(r.CI95_high)})" for r in excluding.itertuples())
+                         + f"); after Holm correction across the {len(final)} definitions the smallest adjusted p is {pfmt(min(holm.values()))}. ")
+                      + ("" if tertile_excluding.empty else
+                         "Top vs bottom tertile, adjusted: " + "; ".join(f"{BURDENS[r.burden][0]} HR {fmt(r.HR)} ({fmt(r.CI95_low)}–{fmt(r.CI95_high)}), p {pfmt(r.p)}"
+                                                                        for r in tertile_excluding.itertuples()) + ". ")
                       + "".join(f"Within {h}, {BURDENS[k][0]} has HR per SD {fmt(r['HR_per_SD'])} ({fmt(r['CI95'][0])}–{fmt(r['CI95'][1])}, "
                                 f"p {pfmt(r['p'])}); this is one of {sum(len(b['by_histology']) for b in burdens.values())} "
                                 "subgroup tests and is not corrected for multiplicity. "

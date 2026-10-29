@@ -77,6 +77,8 @@ Deliverables: `deployment/pathologist_review/{review_sample.py, review_package.p
 
 ## 2. Cell-level validation with immunostaining  (waiting: data)
 
+Status (2026-11-02): TNBC_ST frozen sections (33 arrays): cell-level T/B not supported out of domain; TLS composition filter beats nuclei-only/HookNet vs pathologist nodules, not vs IHC aggregates. See outputs/tnbc_st_20261101/.
+
 Goal: per-cell accuracy of the B / T / Macrophage / Other calls against CD20 / CD3 (± CD68), outside colorectal cancer.
 
 Inputs (drop in `data/ihc_validation/<case>/`): H&E image and the immunostain(s) of the same or a serial section,
