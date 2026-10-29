@@ -1,0 +1,180 @@
+--- original/run_cellcrops.py
+
++++ mac/run_cellcrops.py
+
+@@ -2,4 +2,6 @@
+
+ import os
+ import multiprocessing as mp
++import time
++import json
+ from pathlib import Path
+ 
+@@ -201,7 +203,15 @@
+
+         raise ValueError("background 只能是 'white' 或 'black'")
+ 
+-    one_cell_mask = (label_mask == local_label).astype(np.uint8) * 255
+-
+-    if np.sum(one_cell_mask > 0) == 0:
++    # Crop labels before binarizing: compare 64x64 pixels instead of the full
++    # 1024x1024 patch for every cell. Keep the historical empty/label-0 behavior.
++    if local_label > 0:
++        label_crop = crop_with_padding(label_mask, centroid_x_local, centroid_y_local,
++                                       crop_size=crop_size, pad_value=0)
++        mask_crop = (label_crop == local_label).astype(np.uint8) * 255
++    else:
++        mask_crop = crop_with_padding((label_mask == local_label).astype(np.uint8) * 255,
++                                      centroid_x_local, centroid_y_local, crop_size=crop_size, pad_value=0)
++
++    if not np.any(mask_crop) and not np.any(label_mask == local_label):
+         return {
+             "cell_image_crop_path": "",
+@@ -221,14 +231,4 @@
+
+         pad_value=image_pad_value,
+     )
+-
+-    mask_crop = crop_with_padding(
+-        one_cell_mask,
+-        center_x=centroid_x_local,
+-        center_y=centroid_y_local,
+-        crop_size=crop_size,
+-        pad_value=0,
+-    )
+-
+-    mask_crop = (mask_crop > 0).astype(np.uint8) * 255
+ 
+     if cell_image_mode == "segmented":
+@@ -409,4 +409,6 @@
+
+     overwrite_cell_crops=False,
+     cell_image_mode="raw",
++    device=None,
++    attention="auto",
+ ):
+     """
+@@ -417,4 +419,11 @@
+
+     """
+     from cellpose import models
++    from runtime import select_device
++
++    if batch_size < 1:
++        raise ValueError("batch_size must be positive")
++    selected_device = select_device(device or ("auto" if gpu else "cpu"))
++    if model_name not in {"cpsam", "cpsam_v2", "cpdino", "cpdino-vitb"} and not Path(model_name).is_file():
++        raise FileNotFoundError(f"Cellpose model not found: {model_name}")
+ 
+     out_dir = Path(out_dir)
+@@ -434,5 +443,5 @@
+
+     print(f"[INFO][worker {worker_id}] patch 数量: {len(records)}")
+     print(f"[INFO][worker {worker_id}] Cellpose model: {model_name}")
+-    print(f"[INFO][worker {worker_id}] gpu: {gpu}")
++    print(f"[INFO][worker {worker_id}] device: {selected_device}")
+     print(f"[INFO][worker {worker_id}] crop_cells: {crop_cells}")
+     if crop_cells:
+@@ -441,11 +450,26 @@
+
+         print(f"[INFO][worker {worker_id}] cell_image_mode: {cell_image_mode}")
+ 
++    if not records:
++        return pd.DataFrame(columns=INSTANCE_COLUMNS)
++    print(f"[INFO] Segmentation device: {selected_device}")
+     model = models.CellposeModel(
+-        gpu=gpu,
++        gpu=selected_device.type != "cpu",
++        device=selected_device,
+         pretrained_model=model_name,
+-    )
++        use_bfloat16=False,
++    )
++    use_sdpa = attention == "sdpa" or (
++        attention == "auto" and selected_device.type == "mps" and model.net.backbone == "sam_vitl")
++    if use_sdpa:
++        from segmentation_acceleration import enable_sdpa_attention
++        print(f"[INFO] Optimized attention: {enable_sdpa_attention(model)} layers")
+ 
+     all_instance_rows = []
+     worker_instance_id = 1
++    import torch
++    processing_started = time.perf_counter()
++    eval_seconds = 0.0
++    maximum_observed_mps_driver_bytes = 0
++    progress_path = out_dir / "progress.json"
+ 
+     for start in tqdm(
+@@ -474,4 +498,5 @@
+
+             continue
+ 
++        eval_started = time.perf_counter()
+         masks, flows, styles = model.eval(
+             imgs,
+@@ -483,4 +508,8 @@
+
+             batch_size=batch_size,
+         )
++
++        eval_seconds += time.perf_counter() - eval_started
++        if selected_device.type == "mps":
++            maximum_observed_mps_driver_bytes = max(maximum_observed_mps_driver_bytes, torch.mps.driver_allocated_memory())
+ 
+         for record, patch_img, mask in zip(valid_records, imgs, masks):
+@@ -608,4 +637,15 @@
+
+                 worker_instance_id += 1
+ 
++        progress = {
++            "patches_completed": min(start + batch_size, len(records)),
++            "patches_total": len(records), "cells_retained": len(all_instance_rows),
++            "elapsed_seconds": time.perf_counter() - processing_started,
++            "cellpose_eval_seconds": eval_seconds,
++            "maximum_observed_mps_driver_bytes": maximum_observed_mps_driver_bytes,
++        }
++        temporary_progress = progress_path.with_suffix(".tmp")
++        temporary_progress.write_text(json.dumps(progress, indent=2) + "\n")
++        temporary_progress.replace(progress_path)
++
+     return pd.DataFrame(all_instance_rows, columns=INSTANCE_COLUMNS)
+ 
+@@ -693,4 +733,6 @@
+
+     overwrite_cell_crops=False,
+     cell_image_mode="raw",
++    device=None,
++    attention="auto",
+ ):
+     """
+@@ -718,4 +760,6 @@
+
+         model_name=model_name,
+         gpu=gpu,
++        device=device,
++        attention=attention,
+         batch_size=batch_size,
+         diameter=diameter,
+@@ -1044,5 +1088,13 @@
+
+     )
+ 
++    parser.add_argument("--device", choices=["auto", "mps", "cuda", "cpu"], default=None,
++                        help="Explicit device; auto selects Apple GPU on Mac")
++    parser.add_argument("--attention", choices=["auto", "original", "sdpa"], default="auto",
++                        help="auto uses optimized SAM attention on Apple GPU")
+     args = parser.parse_args()
++    if args.num_gpus > 1:
++        import torch
++        if not torch.cuda.is_available() or args.device in {"mps", "cpu"}:
++            parser.error("Multiple GPUs require CUDA. On this Mac use --num_gpus 1 --device mps.")
+ 
+     crop_cells = not args.no_crop_cells
+@@ -1054,4 +1106,6 @@
+
+             model_name=args.model_name,
+             gpu=args.gpu,
++            device=args.device,
++            attention=args.attention,
+             batch_size=args.batch_size,
+             diameter=args.diameter,

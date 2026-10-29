@@ -1,0 +1,15 @@
+# Python 3.12, native arm64. Exact transitive versions are in requirements-mac.lock.txt.
+torch==2.14.1
+torchvision==0.29.1
+cellpose==4.2.1.1
+pandas
+scikit-image
+tifffile
+pillow
+tqdm
+openslide-python
+openslide-bin
+imagecodecs
+torchmetrics
+matplotlib
+h5py==3.16.0

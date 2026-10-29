@@ -1,0 +1,39 @@
+{
+  "date": "2026-10-16",
+  "default_storage": "on-demand",
+  "existing_runs_migrated": false,
+  "tests": {
+    "deployment/test_result_store.py": {
+      "status": "pass",
+      "output": ".....\n----------------------------------------------------------------------\nRan 5 tests in 0.037s\n\nOK\n"
+    },
+    "deployment/test_archive_results.py": {
+      "status": "pass",
+      "output": "[archive] Writing on-demand archive: 1 cells, 1 patches\n[archive] Checking every patch, crop, mask and ancillary file before cleanup\n[archive] Archive ready: /private/var/folders/v5/2h_5h6615mj4hxyvbtdr3fnm0000gn/T/tmp7z9c3ps8/result/results.h5 (0.05 MiB)\n.[archive] Writing on-demand archive: 1 cells, 1 patches\n[archive] Checking every patch, crop, mask and ancillary file before cleanup\n.[archive] Writing on-demand archive: 0 cells, 0 patches\n[archive] Checking every patch, crop, mask and ancillary file before cleanup\n[archive] Archive ready: /private/var/folders/v5/2h_5h6615mj4hxyvbtdr3fnm0000gn/T/tmp3qvfl585/result/results.h5 (0.03 MiB)\n.[archive] Writing on-demand archive: 1 cells, 1 patches\n[archive] Checking every patch, crop, mask and ancillary file before cleanup\n[archive] Archive ready: /private/var/folders/v5/2h_5h6615mj4hxyvbtdr3fnm0000gn/T/tmplv0xcrxl/result/results.h5 (0.05 MiB)\n.[archive] Writing on-demand archive: 1 cells, 1 patches\n[archive] Checking every patch, crop, mask and ancillary file before cleanup\n[archive] Archive ready: /private/var/folders/v5/2h_5h6615mj4hxyvbtdr3fnm0000gn/T/tmpyky9ock_/result/results.h5 (0.05 MiB)\n.[archive] Writing on-demand archive: 1 cells, 1 patches\n[archive] Checking every patch, crop, mask and ancillary file before cleanup\n[archive] Archive ready: /private/var/folders/v5/2h_5h6615mj4hxyvbtdr3fnm0000gn/T/tmp8szaq1j4/result/results.h5 (0.05 MiB)\n.[archive] Writing on-demand archive: 1 cells, 1 patches\n[archive] Checking every patch, crop, mask and ancillary file before cleanup\n..[archive] Writing on-demand archive: 0 cells, 1 patches\n[archive] Checking every patch, crop, mask and ancillary file before cleanup\n[archive] Archive ready: /private/var/folders/v5/2h_5h6615mj4hxyvbtdr3fnm0000gn/T/tmp3234sxt5/result/results.h5 (0.03 MiB)\n.\n----------------------------------------------------------------------\nRan 9 tests in 0.166s\n\nOK\n"
+    }
+  },
+  "real_slide_pipeline_and_export": {
+    "status": "pass",
+    "patches": 4,
+    "cells": 126,
+    "archive": "/Users/joe/Work/AI/codex/HE2CELL/outputs/archive-default-validation-20261016/TCGA-55-7725-01Z-00-DX1.4d678777-63b1-4f4a-932a-7fccabf504c7/results.h5",
+    "archive_bytes": 15025391,
+    "verification": "Every patch/cell RGB array, instance/binary mask and ancillary file checked before loose-file removal; full export compared pixel-for-pixel and prediction/geometry columns matched.",
+    "archive_seconds": 0.7607796669472009,
+    "scope": "four selected real-slide regions; no biological accuracy inference"
+  },
+  "blank_slide_modes": {
+    "on-demand": {
+      "status": "pass",
+      "cells": 0
+    },
+    "files": {
+      "status": "pass",
+      "cells": 0
+    }
+  },
+  "test_counts": {
+    "reader": 5,
+    "archive_lifecycle": 9
+  }
+}

@@ -1,0 +1,167 @@
+--- original/model_eval.py
+
++++ mac/model_eval.py
+
+@@ -9,5 +9,4 @@
+
+ import torchvision
+ from torchvision.transforms import v2
+-from sklearn.model_selection import train_test_split
+ 
+ from torchmetrics.functional import accuracy, precision, recall, f1_score
+@@ -17,8 +16,12 @@
+
+ from Utils import ColourAugment
+ import argparse
++import time
++import json
++from pathlib import Path
++from runtime import select_device, load_classifier_state
+ 
+ 
+ def parse_args():
+-    parser = argparse.ArgumentParser(description="SAM ConvNet multi-GPU inference")
++    parser = argparse.ArgumentParser(description="H&E cell-type inference on Apple GPU, CUDA, or CPU")
+ 
+     parser.add_argument(
+@@ -46,5 +49,5 @@
+
+         "--batch_size",
+         type=int,
+-        default=2048 * 8,
++        default=128,
+         help="Batch size for inference"
+     )
+@@ -53,5 +56,5 @@
+
+         "--num_workers",
+         type=int,
+-        default=4,
++        default=0,
+         help="Number of DataLoader workers"
+     )
+@@ -64,4 +67,6 @@
+
+     )
+ 
++    parser.add_argument("--device", choices=["auto", "mps", "cuda", "cpu"], default="auto",
++                        help="auto selects Apple GPU on this Mac; --num_gpus 0 forces CPU")
+     return parser.parse_args()
+ 
+@@ -218,5 +223,22 @@
+
+ 
+     meta = pd.read_csv(meta_path)
+-    meta = meta.drop(['prediction', 'celltype', "sample"], axis=1, errors='ignore')
++    meta = meta.drop(['prediction', 'celltype'], axis=1, errors='ignore')
++    required = {"cell_image_crop_path", "cell_mask_crop_path", "global_instance_id"}
++    missing = required - set(meta.columns)
++    if missing:
++        raise ValueError(f"Input CSV is missing columns: {sorted(missing)}")
++    if args.batch_size < 1 or args.num_workers < 0:
++        raise ValueError("batch_size must be positive and num_workers nonnegative")
++    device = select_device("cpu" if args.num_gpus == 0 else args.device)
++    output = Path(output_path)
++    output.parent.mkdir(parents=True, exist_ok=True)
++    if meta.empty:
++        meta["prediction"] = pd.Series(dtype="int64")
++        meta["celltype"] = pd.Series(dtype="str")
++        for column in ["prob_Other", "prob_T", "prob_Macrophage", "prob_B", "confidence", "probability_margin", "normalized_entropy"]:
++            meta[column] = pd.Series(dtype="float64")
++        meta.to_csv(output, index=False)
++        print(f"No cells to classify. Saved empty result to: {output}")
++        return
+     meta2 = meta[
+         [
+@@ -235,5 +257,5 @@
+
+         shuffle=False,
+         num_workers=args.num_workers,
+-        pin_memory=True,
++        pin_memory=device.type == "cuda",
+         drop_last=False,
+         persistent_workers=True if args.num_workers > 0 else False,
+@@ -243,26 +265,14 @@
+
+     num_classes = 4
+ 
+-    available_gpus = torch.cuda.device_count()
+-
+-    if args.num_gpus > 0 and torch.cuda.is_available():
+-        use_gpus = min(args.num_gpus, available_gpus)
+-        device = torch.device("cuda:0")
+-    else:
+-        use_gpus = 0
+-        device = torch.device("cpu")
+-
+-    print(f"Available GPUs: {available_gpus}")
+-    print(f"Requested GPUs: {args.num_gpus}")
+-    print(f"Using GPUs: {use_gpus}")
+-    print(f"Device: {device}")
++    use_gpus = min(args.num_gpus, torch.cuda.device_count()) if device.type == "cuda" else 0
++    print(f"Device: {device}; batch size: {args.batch_size}")
+ 
+     model = SAM_ConvNet(
+         num_classes=num_classes,
+         loss_function="CrossEntropyLoss",
+-        pretrained=True
+-    )
+-
+-    checkpoint = torch.load(save_path, map_location="cpu")
+-    model.load_state_dict(checkpoint["model_state_dict"])
++        pretrained=False
++    )
++
++    model.load_state_dict(load_classifier_state(save_path))
+ 
+     model = model.to(device)
+@@ -277,4 +287,6 @@
+
+     all_samples = []
+     all_predictions = []
++    all_probabilities = []
++    inference_started = time.perf_counter()
+ 
+     with torch.inference_mode():
+@@ -284,4 +296,5 @@
+
+             logits = model(images)
+             predictions = logits.argmax(dim=1)
++            all_probabilities.append(torch.softmax(logits, dim=1).cpu().numpy())
+ 
+             all_samples.append(sample.cpu().numpy())
+@@ -290,4 +303,5 @@
+
+     all_samples = np.concatenate(all_samples)
+     all_predictions = np.concatenate(all_predictions)
++    probabilities = np.concatenate(all_probabilities)
+ 
+     res = pd.DataFrame({
+@@ -313,12 +327,20 @@
+
+     res["celltype"] = res["prediction"].map(rename)
+ 
+-    meta = meta.merge(
+-        res[["sample", "prediction", "celltype"]],
+-        left_on="global_instance_id",
+-        right_on="sample",
+-        how="left"
+-    )
++    # Predictions follow the DataLoader's input order; preserve the slide's sample column.
++    meta["prediction"] = all_predictions
++    meta["celltype"] = res["celltype"].to_numpy()
++    for index, name in enumerate(["Other", "T", "Macrophage", "B"]):
++        meta[f"prob_{name}"] = probabilities[:, index]
++    sorted_probs = np.sort(probabilities, axis=1)
++    meta["confidence"] = sorted_probs[:, -1]
++    meta["probability_margin"] = sorted_probs[:, -1] - sorted_probs[:, -2]
++    meta["normalized_entropy"] = -(probabilities * np.log(np.clip(probabilities, 1e-12, 1))).sum(axis=1) / np.log(4)
+ 
+     meta.to_csv(output_path, index=False)
++    metrics = {"inference_including_data_loading_seconds": time.perf_counter() - inference_started,
++               "cells": len(meta), "device": str(device)}
++    if device.type == "mps":
++        metrics["mps_driver_allocated_bytes_at_end"] = torch.mps.driver_allocated_memory()
++    output.with_suffix(".inference.json").write_text(json.dumps(metrics, indent=2) + "\n")
+ 
+     print(f"Saved result to: {output_path}")

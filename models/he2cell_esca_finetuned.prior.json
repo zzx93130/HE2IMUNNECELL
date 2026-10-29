@@ -1,0 +1,21 @@
+{
+  "prior_Other_T_Macrophage_B": [
+    0.6666666666666666,
+    0.2348990201903303,
+    0.06327698888034758,
+    0.03515732426265544
+  ],
+  "tau": 0.5,
+  "rule": "probabilities x prior**tau, renormalised; applied after D4 averaging",
+  "why": "Fine-tuning used class-balanced sampling, which over-calls rare classes (B, macrophage) at real prevalence; tau 0.5 partially restores the training-class prior.",
+  "checkpoint_sha256": "1778b5dd336db6e58f59b3a2533c2b15631d8f9b136d539072fd0038cb2a5f1d",
+  "checkpoint_source": "outputs/classifier_finetune_20261019/best_finetuned.pth (epoch 1; initialised from best_model2.pth)",
+  "training": "CRC01, CRC02, CRC04-CRC08, CRC10 colorectal crops; stain/colour/scale/mask augmentation",
+  "prior_source": "class counts of the 8 training patients of the 10-patient fine-tune",
+  "validated": {
+    "TCGA-ESCA held-out (85 patients) two-stage object F1 vs HookNet-TLS": 0.88,
+    "Visium pathologist labels spot AUROC TLS vs inflammation": 0.923,
+    "Visium frozen B-density detector spot F1": 0.85
+  },
+  "adopted": "2026-10-24"
+}

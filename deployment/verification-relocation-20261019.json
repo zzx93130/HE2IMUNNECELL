@@ -1,0 +1,108 @@
+{
+  "date": "2026-10-19",
+  "project": "/Users/joe/SSD2_1T/HE2CELL",
+  "status": "pass",
+  "previous_gpu_report": {
+    "device": "mps",
+    "seconds": 19.77,
+    "classifier_weights": "synthetic untrained test only; deleted after test",
+    "biological_accuracy_validated": false,
+    "checks": {
+      "ordinary_tiff_extraction_and_dark_tissue_selection": "pass",
+      "blank_slide_retains_csv_headers": "pass",
+      "cell_crop_edge_padding": "pass",
+      "rgb_normalization_and_fourth_mask_channel": "pass",
+      "classifier_cpu_device_logit_agreement": {
+        "status": "pass",
+        "maximum_absolute_error": 9.5367431640625e-06
+      },
+      "linux_dataparallel_checkpoint_loading_and_csv_classification": "pass",
+      "empty_classification_csv": "pass",
+      "official_cellpose_pipeline": {
+        "status": "pass",
+        "synthetic_cells": 36
+      }
+    }
+  },
+  "checks": [
+    {
+      "name": "runtime",
+      "command": [
+        "./he2cell",
+        "doctor"
+      ],
+      "status": "pass",
+      "returncode": 0,
+      "seconds": 0.65,
+      "output": "Python: 3.12.14 (arm64)\ntorch: 2.14.1\ntorchvision: 0.29.1\ncellpose: 4.2.1.1\nopenslide-python: 1.4.6\nopenslide-bin: 4.0.1.2\nh5py: 3.16.0\nOpenSlide library: 4.0.1\nApple GPU available: True\nDevice computation: PASS (mps)\nTrained classifier: /Users/joe/SSD2_1T/HE2CELL/models/best_model2.pth\nLocal segmentation weights: not provided; built-in cpsam_v2 is available by name\nOfficial cpsam_v2 cache: present\n"
+    },
+    {
+      "name": "archive_reader",
+      "command": [
+        ".venv/bin/python",
+        "deployment/test_result_store.py"
+      ],
+      "status": "pass",
+      "returncode": 0,
+      "seconds": 17.74,
+      "output": ".....\n----------------------------------------------------------------------\nRan 5 tests in 0.186s\n\nOK\n"
+    },
+    {
+      "name": "archive_lifecycle",
+      "command": [
+        ".venv/bin/python",
+        "deployment/test_archive_results.py"
+      ],
+      "status": "pass",
+      "returncode": 0,
+      "seconds": 3.07,
+      "output": "[archive] Writing on-demand archive: 1 cells, 1 patches\n[archive] Checking every patch, crop, mask and ancillary file before cleanup\n[archive] Archive ready: /private/var/folders/v5/2h_5h6615mj4hxyvbtdr3fnm0000gn/T/tmp66prl9qz/result/results.h5 (0.05 MiB)\n.[archive] Writing on-demand archive: 1 cells, 1 patches\n[archive] Checking every patch, crop, mask and ancillary file before cleanup\n.[archive] Writing on-demand archive: 0 cells, 0 patches\n[archive] Checking every patch, crop, mask and ancillary file before cleanup\n[archive] Archive ready: /private/var/folders/v5/2h_5h6615mj4hxyvbtdr3fnm0000gn/T/tmpugf53m5g/result/results.h5 (0.03 MiB)\n.[archive] Writing on-demand archive: 1 cells, 1 patches\n[archive] Checking every patch, crop, mask and ancillary file before cleanup\n[archive] Archive ready: /private/var/folders/v5/2h_5h6615mj4hxyvbtdr3fnm0000gn/T/tmpol83fc_1/result/results.h5 (0.05 MiB)\n.[archive] Writing on-demand archive: 1 cells, 1 patches\n[archive] Checking every patch, crop, mask and ancillary file before cleanup\n[archive] Archive ready: /private/var/folders/v5/2h_5h6615mj4hxyvbtdr3fnm0000gn/T/tmptenahewd/result/results.h5 (0.05 MiB)\n.[archive] Writing on-demand archive: 1 cells, 1 patches\n[archive] Checking every patch, crop, mask and ancillary file before cleanup\n[archive] Archive ready: /private/var/folders/v5/2h_5h6615mj4hxyvbtdr3fnm0000gn/T/tmpnur8yrxl/result/results.h5 (0.05 MiB)\n.[archive] Writing on-demand archive: 1 cells, 1 patches\n[archive] Checking every patch, crop, mask and ancillary file before cleanup\n..[archive] Writing on-demand archive: 0 cells, 1 patches\n[archive] Checking every patch, crop, mask and ancillary file before cleanup\n[archive] Archive ready: /private/var/folders/v5/2h_5h6615mj4hxyvbtdr3fnm0000gn/T/tmpduo9j81r/result/results.h5 (0.03 MiB)\n.\n----------------------------------------------------------------------\nRan 9 tests in 2.603s\n\nOK\n"
+    },
+    {
+      "name": "tls_tools",
+      "command": [
+        ".venv/bin/python",
+        "deployment/test_tls_tools.py"
+      ],
+      "status": "pass",
+      "returncode": 0,
+      "seconds": 3.28,
+      "output": "test_actual_tlsr_and_finder_distinguish_mixed_t_only_and_dispersed (__main__.ContractTests.test_actual_tlsr_and_finder_distinguish_mixed_t_only_and_dispersed) ... ok\ntest_exact_upstream_equivalence_with_markers_used_only_as_test_aliases (__main__.ContractTests.test_exact_upstream_equivalence_with_markers_used_only_as_test_aliases) ... ok\ntest_geometry_translation_and_index_reset (__main__.ContractTests.test_geometry_translation_and_index_reset) ... ok\ntest_safe_labels_and_quality_checks_keep_cell_universe (__main__.ContractTests.test_safe_labels_and_quality_checks_keep_cell_universe) ... ok\n\n----------------------------------------------------------------------\nRan 4 tests in 2.940s\n\nOK\n"
+    },
+    {
+      "name": "revised_tls_methods",
+      "command": [
+        ".runtime/hooknet_tls/venv/bin/python",
+        "deployment/test_tls_methods_v2.py"
+      ],
+      "status": "pass",
+      "returncode": 0,
+      "seconds": 46.92,
+      "output": "../Users/joe/SSD2_1T/HE2CELL/.runtime/hooknet_tls/venv/lib/python3.12/site-packages/matplotlib/_fontconfig_pattern.py:64: PyparsingDeprecationWarning: 'oneOf' deprecated - use 'one_of'\n  prop = Group((name + Suppress(\"=\") + comma_separated(value)) | oneOf(_CONSTANTS))\n/Users/joe/SSD2_1T/HE2CELL/.runtime/hooknet_tls/venv/lib/python3.12/site-packages/matplotlib/_fontconfig_pattern.py:85: PyparsingDeprecationWarning: 'parseString' deprecated - use 'parse_string'\n  parse = parser.parseString(pattern)\n/Users/joe/SSD2_1T/HE2CELL/.runtime/hooknet_tls/venv/lib/python3.12/site-packages/matplotlib/_fontconfig_pattern.py:89: PyparsingDeprecationWarning: 'resetCache' deprecated - use 'reset_cache'\n  parser.resetCache()\n.........\n----------------------------------------------------------------------\nRan 11 tests in 19.446s\n\nOK\n"
+    },
+    {
+      "name": "hooknet",
+      "command": [
+        ".runtime/hooknet_tls/venv/bin/python",
+        "deployment/test_hooknet_tls.py"
+      ],
+      "status": "pass",
+      "returncode": 0,
+      "seconds": 0.34,
+      "output": "test_GC_confidence_and_half_area_bounding_box_rule (__main__.HookNetContractTests.test_GC_confidence_and_half_area_bounding_box_rule) ... ok\ntest_centered_mask_crop_matches_upstream_function (__main__.HookNetContractTests.test_centered_mask_crop_matches_upstream_function) ... ok\ntest_exact_TLS_default_support_threshold (__main__.HookNetContractTests.test_exact_TLS_default_support_threshold) ... ok\ntest_lossless_pyramid_coordinates_match_saved_pixel_array (__main__.HookNetContractTests.test_lossless_pyramid_coordinates_match_saved_pixel_array) ... ok\ntest_native_polygonization_fills_GC_hole_in_TLS (__main__.HookNetContractTests.test_native_polygonization_fills_GC_hole_in_TLS) ... ok\n\n----------------------------------------------------------------------\nRan 5 tests in 0.169s\n\nOK\n"
+    },
+    {
+      "name": "full_gpu_pipeline",
+      "command": [
+        ".venv/bin/python",
+        "deployment/verify_mac.py",
+        "--device",
+        "mps"
+      ],
+      "status": "pass",
+      "returncode": 0,
+      "seconds": 47.66,
+      "output": "[INFO] Otsu \u9608\u503c\uff08\u7070\u5ea6\uff09: 150\n\n================================================================================\n[INFO] Processing: /Users/joe/SSD2_1T/HE2CELL/.runtime/verification-gknjh7tz/artificial_slide.tif\n================================================================================\n[INFO] Otsu \u9608\u503c\uff08\u7070\u5ea6\uff09: 150\n[INFO] WSI size: width=256, height=256\n[INFO] Thumbnail mask size: width=256, height=256\n[INFO] scale_x=1.0000, scale_y=1.0000\n[INFO] num_workers=2\n[INFO] \u5f85\u63d0\u53d6 patch \u6570\u91cf: 1\n\nExtracting patches from artificial_slide:   0%|          | 0/1 [00:00<?, ?it/s]\nExtracting patches from artificial_slide: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00, 9177.91it/s]\nDevice: mps; batch size: 2\n\n  0%|          | 0/1 [00:00<?, ?it/s]\n100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.73it/s]\n100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.73it/s]\nSaved result to: /Users/joe/SSD2_1T/HE2CELL/.runtime/verification-gknjh7tz/classification.csv\nNo cells to classify. Saved empty result to: /Users/joe/SSD2_1T/HE2CELL/.runtime/verification-gknjh7tz/empty_result.csv\n\nProcessing artificial_slide.tif on mps\n\n================================================================================\n[INFO] Processing: /Users/joe/SSD2_1T/HE2CELL/.runtime/verification-gknjh7tz/artificial_slide.tif\n================================================================================\n[INFO] Otsu \u9608\u503c\uff08\u7070\u5ea6\uff09: 150\n[INFO] WSI size: width=256, height=256\n[INFO] Thumbnail mask size: width=256, height=256\n[INFO] scale_x=1.0000, scale_y=1.0000\n[INFO] num_workers=4\n[INFO] \u5f85\u63d0\u53d6 patch \u6570\u91cf: 1\n\nExtracting patches from artificial_slide:   0%|          | 0/1 [00:00<?, ?it/s]\nExtracting patches from artificial_slide: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00, 582.14it/s]\n[INFO][worker 0] patch \u6570\u91cf: 1\n[INFO][worker 0] Cellpose model: cpsam_v2\n[INFO][worker 0] device: mps\n[INFO][worker 0] crop_cells: True\n[INFO][worker 0] cell_out_dir: /Users/joe/SSD2_1T/HE2CELL/.runtime/verification-gknjh7tz/pipeline/artificial_slide/cells/single_cells\n[INFO][worker 0] crop_size: 64\n[INFO][worker 0] cell_image_mode: raw\n[INFO] Segmentation device: mps\n[INFO] Optimized attention: 24 layers\n\nRunning Cellpose-SAM:   0%|          | 0/1 [00:00<?, ?it/s]/Users/joe/SSD2_1T/HE2CELL/.venv/lib/python3.12/site-packages/cellpose/dynamics.py:541: UserWarning: Sparse invariant checks are implicitly disabled. Memory errors (e.g. SEGFAULT) will occur when operating on a sparse tensor which violates the invariants, but checks incur performance overhead. To silence this warning, explicitly opt in or out. See `torch.sparse.check_sparse_tensor_invariants.__doc__` for guidance.  (Triggered internally at /Users/runner/work/pytorch/pytorch/aten/src/ATen/Context.cpp:855.)\n  coo = torch.sparse_coo_tensor(pt, torch.ones(pt.shape[1], device=pt.device, dtype=torch.int),\n\nRunning Cellpose-SAM: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.08it/s]\nRunning Cellpose-SAM: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.08it/s]\n[OK] Cellpose mask \u5df2\u4fdd\u5b58\u5230: /Users/joe/SSD2_1T/HE2CELL/.runtime/verification-gknjh7tz/pipeline/artificial_slide/cells/patch_masks\n[OK] mask \u5b9e\u4f8b\u5750\u6807\u8868\u5df2\u4fdd\u5b58\u5230: /Users/joe/SSD2_1T/HE2CELL/.runtime/verification-gknjh7tz/pipeline/artificial_slide/cells/mask_tables/artificial_slide_patch_index_cellpose_mask_instances.csv\n[OK] \u5355\u7ec6\u80de image/mask crop \u5df2\u4fdd\u5b58\u5230: /Users/joe/SSD2_1T/HE2CELL/.runtime/verification-gknjh7tz/pipeline/artificial_slide/cells/single_cells\n[OK] \u7ec6\u80de\u5b9e\u4f8b\u6570\u91cf: 36\nDevice: mps; batch size: 128\n\n  0%|          | 0/1 [00:00<?, ?it/s]\n100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  2.08it/s]\n100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  2.08it/s]\nSaved result to: /Users/joe/SSD2_1T/HE2CELL/.runtime/verification-gknjh7tz/pipeline/artificial_slide/cell_types.csv\nTotal selected rows: 36\nSamples to render: 1\n[Rendering] sample=/Users/joe/SSD2_1T/HE2CELL/.runtime/verification-gknjh7tz/artificial_slide.tif  tif=/Users/joe/SSD2_1T/HE2CELL/.runtime/verification-gknjh7tz/artificial_slide.tif\n[Saved] /Users/joe/SSD2_1T/HE2CELL/.runtime/verification-gknjh7tz/pipeline/artificial_slide/overlay/artificial_slide_boxes_overlay.png\nDone.\n[OK] artificial_slide\n[OK] patch \u6570\u91cf: 1\n[OK] \u5750\u6807\u8868: /Users/joe/SSD2_1T/HE2CELL/.runtime/verification-gknjh7tz/pipeline/artificial_slide/patches/tables/artificial_slide_patch_index.csv\n[archive] Writing on-demand archive: 36 cells, 1 patches\n[archive] Checking every patch, crop, mask and ancillary file before cleanup\n[archive] Archive ready: /Users/joe/SSD2_1T/HE2CELL/.runtime/verification-gknjh7tz/pipeline/artificial_slide/results.h5 (0.09 MiB)\n\nFinished. Results: /Users/joe/SSD2_1T/HE2CELL/.runtime/verification-gknjh7tz/pipeline\n[OK] artificial_slide\n[OK] patch \u6570\u91cf: 1\n[OK] \u5750\u6807\u8868: /Users/joe/SSD2_1T/HE2CELL/.runtime/verification-gknjh7tz/patches/tables/artificial_slide_patch_index.csv\n\n================================================================================\n[INFO] Processing: /Users/joe/SSD2_1T/HE2CELL/.runtime/verification-gknjh7tz/blank.tif\n================================================================================\n[INFO] Otsu \u9608\u503c\uff08\u7070\u5ea6\uff09: 255\n[INFO] WSI size: width=256, height=256\n[INFO] Thumbnail mask size: width=256, height=256\n[INFO] scale_x=1.0000, scale_y=1.0000\n[INFO] num_workers=1\n[INFO] \u5f85\u63d0\u53d6 patch \u6570\u91cf: 0\n[OK] blank\n[OK] patch \u6570\u91cf: 0\n[OK] \u5750\u6807\u8868: /Users/joe/SSD2_1T/HE2CELL/.runtime/verification-gknjh7tz/blank/tables/blank_patch_index.csv\n{\n  \"device\": \"mps\",\n  \"seconds\": 19.06,\n  \"classifier_weights\": \"synthetic untrained test only; deleted after test\",\n  \"biological_accuracy_validated\": false,\n  \"checks\": {\n    \"ordinary_tiff_extraction_and_dark_tissue_selection\": \"pass\",\n    \"blank_slide_retains_csv_headers\": \"pass\",\n    \"cell_crop_edge_padding\": \"pass\",\n    \"rgb_normalization_and_fourth_mask_channel\": \"pass\",\n    \"classifier_cpu_device_logit_agreement\": {\n      \"status\": \"pass\",\n      \"maximum_absolute_error\": 9.5367431640625e-06\n    },\n    \"linux_dataparallel_checkpoint_loading_and_csv_classification\": \"pass\",\n    \"empty_classification_csv\": \"pass\",\n    \"official_cellpose_pipeline\": {\n      \"status\": \"pass\",\n      \"synthetic_cells\": 36\n    }\n  }\n}\n"
+    }
+  ]
+}

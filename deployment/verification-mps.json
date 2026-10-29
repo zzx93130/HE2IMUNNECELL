@@ -1,0 +1,22 @@
+{
+  "device": "mps",
+  "seconds": 19.06,
+  "classifier_weights": "synthetic untrained test only; deleted after test",
+  "biological_accuracy_validated": false,
+  "checks": {
+    "ordinary_tiff_extraction_and_dark_tissue_selection": "pass",
+    "blank_slide_retains_csv_headers": "pass",
+    "cell_crop_edge_padding": "pass",
+    "rgb_normalization_and_fourth_mask_channel": "pass",
+    "classifier_cpu_device_logit_agreement": {
+      "status": "pass",
+      "maximum_absolute_error": 9.5367431640625e-06
+    },
+    "linux_dataparallel_checkpoint_loading_and_csv_classification": "pass",
+    "empty_classification_csv": "pass",
+    "official_cellpose_pipeline": {
+      "status": "pass",
+      "synthetic_cells": 36
+    }
+  }
+}

@@ -1,0 +1,13 @@
+.venv/
+.runtime/
+__pycache__/
+*.pyc
+.DS_Store
+models/*
+data/*
+outputs/*
+!models/.gitkeep
+!data/.gitkeep
+!outputs/.gitkeep
+!models/he2cell_esca_finetuned.pth
+!models/he2cell_esca_finetuned.prior.json

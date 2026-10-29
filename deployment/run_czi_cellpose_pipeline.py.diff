@@ -1,0 +1,230 @@
+--- original/run_czi_cellpose_pipeline.py
+
++++ mac/run_czi_cellpose_pipeline.py
+
+@@ -12,4 +12,5 @@
+
+ import threading
+ import openslide
++from slide_io import open_slide
+ 
+ 
+@@ -44,8 +45,11 @@
+
+     if tissue_mode == "dark":
+         # HE 病理图像常用：组织比白色背景暗
+-        binary_mask = (thumbnail_gray < otsu_thresh).astype(np.uint8) * 255
++        binary_mask = (thumbnail_gray <= otsu_thresh).astype(np.uint8) * 255
+     elif tissue_mode == "light":
+         # 如果你的组织区域比背景亮，可以用这个
+         binary_mask = (thumbnail_gray > otsu_thresh).astype(np.uint8) * 255
++    # Otsu has no meaningful split for a uniform image; avoid accepting a blank slide.
++    if thumbnail_gray.min() == thumbnail_gray.max():
++        binary_mask[:] = 0
+     kernel = np.ones((kernel_size, kernel_size), np.uint8)
+     # 去除小噪声
+@@ -74,4 +78,5 @@
+
+     include_edges=True,
+     num_workers=8,
++    max_patches=None,
+ ):
+     """
+@@ -94,5 +99,5 @@
+
+         raise ValueError("多线程提取 patch 时 source_tif 不能为空，需要用它在线程中重新打开 OpenSlide")
+ 
+-    out_dir = Path(out_dir)
++    out_dir = Path(out_dir).resolve()
+ 
+     wsi_width, wsi_height = slide.dimensions
+@@ -138,5 +143,5 @@
+
+ 
+             patch_mask = binary_mask[thumb_y1:thumb_y2, thumb_x1:thumb_x2]
+-            tissue_ratio = np.mean(patch_mask == 0)
++            tissue_ratio = np.mean(patch_mask != 0)
+ 
+             if tissue_ratio < min_coverage:
+@@ -158,13 +163,26 @@
+
+     print(f"[INFO] 待提取 patch 数量: {len(tasks)}")
+ 
++    if max_patches is not None:
++        if max_patches < 1:
++            raise ValueError("max_patches must be positive")
++        if len(tasks) > max_patches:
++            indices = np.linspace(0, len(tasks) - 1, max_patches, dtype=int)
++            tasks = [tasks[index] for index in indices]
++            print(f"[INFO] Preview: sampling {len(tasks)} tissue patches across the slide")
++
+     if len(tasks) == 0:
+-        return pd.DataFrame()
++        return pd.DataFrame(columns=["path", "num_patch", "sample", "source_tif", "x", "y",
++                                     "patch_size", "stride", "level", "tissue_ratio"])
+ 
+     # 每个线程维护自己的 OpenSlide 对象
+     thread_local = threading.local()
++    thread_slides = []
++    thread_slides_lock = threading.Lock()
+ 
+     def get_thread_slide():
+         if not hasattr(thread_local, "slide"):
+-            thread_local.slide = openslide.OpenSlide(str(source_tif))
++            thread_local.slide = open_slide(source_tif)
++            with thread_slides_lock:
++                thread_slides.append(thread_local.slide)
+         return thread_local.slide
+ 
+@@ -219,14 +237,18 @@
+
+     rows = []
+     # 第二步：多线程提取 patch
+-    with ThreadPoolExecutor(max_workers=num_workers) as executor:
+-        futures = [executor.submit(save_one_patch, task) for task in tasks]
+-
+-        for future in tqdm(
+-            as_completed(futures),
+-            total=len(futures),
+-            desc=f"Extracting patches from {sample_name}",
+-        ):
+-            row = future.result()
+-            rows.append(row)
++    try:
++        with ThreadPoolExecutor(max_workers=num_workers) as executor:
++            futures = [executor.submit(save_one_patch, task) for task in tasks]
++    
++            for future in tqdm(
++                as_completed(futures),
++                total=len(futures),
++                desc=f"Extracting patches from {sample_name}",
++            ):
++                row = future.result()
++                rows.append(row)
++    finally:
++        for thread_slide in thread_slides:
++            thread_slide.close()
+ 
+     image_dir = pd.DataFrame(rows)
+@@ -250,5 +272,6 @@
+
+     tissue_mode="dark",
+     save_qc=True,
+-    num_workers=8
++    num_workers=8,
++    max_patches=None,
+ ):
+     """
+@@ -256,5 +279,5 @@
+
+     """
+ 
+-    tif_path = Path(tif_path)
++    tif_path = Path(tif_path).resolve()
+     sample_name = tif_path.stem
+ 
+@@ -263,43 +286,45 @@
+
+     print("=" * 80)
+ 
+-    slide = openslide.OpenSlide(str(tif_path))
+-    w, h = slide.level_dimensions[0]
+-    qc_dir = Path(out_dir) / "qc" if save_qc else None
+-    thumbnail_size = (int(w/100), int(h/100))
+-    binary_mask, thumbnail_rgb = detect_tissue_regions(
+-        slide=slide,
+-        thumbnail_size=thumbnail_size,
+-        kernel_size=5,
+-        tissue_mode=tissue_mode,
+-        save_qc_dir=qc_dir,
+-        sample_name=sample_name,
+-    )
+-
+-    image_dir = extract_patches_from_roi(
+-        slide=slide,
+-        binary_mask=binary_mask,
+-        patch_size=patch_size,
+-        stride=stride,
+-        min_coverage=min_coverage,
+-        out_dir=out_dir,
+-        sample_name=sample_name,
+-        source_tif=str(tif_path),
+-        save_format=save_format,
+-        files_per_folder=files_per_folder,
+-        num_workers=num_workers,
+-        include_edges=include_edges,
+-    )
+-
+-    table_dir = Path(out_dir) / "tables"
+-    table_dir.mkdir(parents=True, exist_ok=True)
+-
+-    csv_path = table_dir / f"{sample_name}_patch_index.csv"
+-    image_dir.to_csv(csv_path, index=False)
+-
+-    print(f"[OK] {sample_name}")
+-    print(f"[OK] patch 数量: {len(image_dir)}")
+-    print(f"[OK] 坐标表: {csv_path}")
+-
+-    slide.close()
++    slide = open_slide(tif_path)
++    try:
++        w, h = slide.level_dimensions[0]
++        qc_dir = Path(out_dir) / "qc" if save_qc else None
++        thumbnail_size = (max(1, min(w, thumbnail_size[0])), max(1, min(h, thumbnail_size[1])))
++        binary_mask, thumbnail_rgb = detect_tissue_regions(
++            slide=slide,
++            thumbnail_size=thumbnail_size,
++            kernel_size=5,
++            tissue_mode=tissue_mode,
++            save_qc_dir=qc_dir,
++            sample_name=sample_name,
++        )
++    
++        image_dir = extract_patches_from_roi(
++            slide=slide,
++            binary_mask=binary_mask,
++            patch_size=patch_size,
++            stride=stride,
++            min_coverage=min_coverage,
++            out_dir=out_dir,
++            sample_name=sample_name,
++            source_tif=str(tif_path),
++            save_format=save_format,
++            files_per_folder=files_per_folder,
++            num_workers=num_workers,
++            include_edges=include_edges,
++            max_patches=max_patches,
++        )
++    
++        table_dir = Path(out_dir) / "tables"
++        table_dir.mkdir(parents=True, exist_ok=True)
++    
++        csv_path = table_dir / f"{sample_name}_patch_index.csv"
++        image_dir.to_csv(csv_path, index=False)
++    
++        print(f"[OK] {sample_name}")
++        print(f"[OK] patch 数量: {len(image_dir)}")
++        print(f"[OK] 坐标表: {csv_path}")
++    finally:
++        slide.close()
+ 
+     return image_dir
+@@ -402,4 +427,5 @@
+
+ 
+     all_tables = []
++    failures = []
+ 
+     for tif_path in tif_files:
+@@ -423,6 +449,10 @@
+
+ 
+         except Exception as e:
++            failures.append(str(tif_path))
+             print(f"[ERROR] 处理失败: {tif_path}")
+             print(f"[ERROR] {repr(e)}")
++
++    if failures:
++        raise RuntimeError(f"Patch extraction failed for: {failures}")
+ 
+     # if len(all_tables) > 0:

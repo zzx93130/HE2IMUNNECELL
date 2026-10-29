@@ -1,0 +1,12 @@
+#!/bin/zsh
+set -euo pipefail
+project_dir="${0:A:h}"
+if [[ ! -x "$project_dir/.venv/bin/python" ]]; then
+  print -u2 "Python environment is missing. Run setup_mac.sh first."
+  exit 1
+fi
+export CELLPOSE_LOCAL_MODELS_PATH="$project_dir/models/cellpose_cache"
+export MPLCONFIGDIR="$project_dir/.runtime/matplotlib"
+export OMP_NUM_THREADS="${OMP_NUM_THREADS:-8}"
+export OPENBLAS_NUM_THREADS="${OPENBLAS_NUM_THREADS:-8}"
+exec "$project_dir/.venv/bin/python" "$project_dir/he2cell.py" "$@"

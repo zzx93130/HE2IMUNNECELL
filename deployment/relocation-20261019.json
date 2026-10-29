@@ -1,0 +1,11 @@
+{
+  "source": "/Users/joe/Work/AI/codex/HE2CELL",
+  "destination": "/Users/joe/SSD2_1T/HE2CELL",
+  "files": 336365,
+  "entries": 349226,
+  "bytes": 133187252656,
+  "sha256_verified": true,
+  "verification_excludes": ".DS_Store files actively maintained by Finder",
+  "status": "complete",
+  "compatibility_link": true
+}
